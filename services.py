@@ -3,6 +3,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
+import uuid
 
 import exifread
 import pandas as pd
@@ -10,6 +11,9 @@ import streamlit as st
 from google import genai
 from google.genai import types
 from PIL import Image
+from pillow_heif import register_heif_opener
+
+register_heif_opener()
 from supabase import create_client, Client
 
 from config import FOGGIA_BBOX, MODELLI_FALLBACK, ROUTING_EMAIL
@@ -128,11 +132,36 @@ Categorie disponibili:
     }
 
 
-def salva_su_supabase(lat: float, lon: float, categoria: str) -> bool:
+def _carica_foto_su_supabase(img_bytes: bytes, record_id: str) -> str | None:
     try:
-        get_supabase().table("segnalazioni").insert(
-            {"lat": lat, "lon": lon, "categoria": categoria}
-        ).execute()
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        buf.seek(0)
+        get_supabase().storage.from_("segnalazioni-foto").upload(
+            path=f"{record_id}.jpg",
+            file=buf.getvalue(),
+            file_options={"content-type": "image/jpeg", "upsert": "false"},
+        )
+        base_url = st.secrets["SUPABASE_URL"]
+        return f"{base_url}/storage/v1/object/public/segnalazioni-foto/{record_id}.jpg"
+    except Exception as e:
+        st.warning(f"Foto non caricata: {e}")
+        return None
+
+
+def salva_su_supabase(
+    lat: float, lon: float, categoria: str, img_bytes: bytes | None = None
+) -> bool:
+    try:
+        record_id = str(uuid.uuid4())
+        image_url = None
+        if img_bytes:
+            image_url = _carica_foto_su_supabase(img_bytes, record_id)
+        payload = {"id": record_id, "lat": lat, "lon": lon, "categoria": categoria}
+        if image_url:
+            payload["image_url"] = image_url
+        get_supabase().table("segnalazioni").insert(payload).execute()
         return True
     except Exception as e:
         st.error(f"Errore salvataggio DB: {e}")
@@ -168,10 +197,25 @@ def genera_mailto(
 def carica_mappa() -> pd.DataFrame:
     try:
         risposta = (
-            get_supabase().table("segnalazioni").select("lat,lon,categoria").execute()
+            get_supabase()
+            .table("segnalazioni")
+            .select("id,lat,lon,categoria,image_url")
+            .execute()
         )
         if risposta.data:
             return pd.DataFrame(risposta.data).dropna(subset=["lat", "lon"])
     except Exception as e:
         st.warning(f"Impossibile caricare la mappa: {e}")
-    return pd.DataFrame(columns=["lat", "lon", "categoria"])
+    return pd.DataFrame(columns=["id", "lat", "lon", "categoria", "image_url"])
+
+
+def elimina_segnalazione(record_id: str, image_url: str | None) -> bool:
+    try:
+        get_supabase().table("segnalazioni").delete().eq("id", record_id).execute()
+        if image_url and str(image_url) not in ("nan", "None", ""):
+            get_supabase().storage.from_("segnalazioni-foto").remove([f"{record_id}.jpg"])
+        st.cache_data.clear()
+        return True
+    except Exception as e:
+        st.error(f"Errore eliminazione: {e}")
+        return False

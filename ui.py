@@ -1,5 +1,6 @@
 import io
 
+import pydeck as pdk
 import streamlit as st
 from PIL import Image
 
@@ -7,6 +8,7 @@ from config import CATEGORIE, ICONE
 from services import (
     analizza_con_gemini,
     carica_mappa,
+    elimina_segnalazione,
     estrai_gps_da_exif,
     genera_mailto,
     geocodifica_indirizzo,
@@ -14,6 +16,73 @@ from services import (
     salva_su_supabase,
 )
 from state import init_session_state, reset_stato
+
+_COLORI_PYDECK = {
+    "Rifiuti": [76, 187, 23, 220],
+    "Buche": [255, 140, 0, 220],
+    "Illuminazione": [30, 144, 255, 220],
+    "Altro": [160, 160, 160, 220],
+}
+
+
+def render_pydeck_map(df, map_key: str = "mappa"):
+    df = df.copy()
+    df["color"] = df["categoria"].apply(lambda c: _COLORI_PYDECK.get(c, [160, 160, 160, 220]))
+    df["img_tag"] = df["image_url"].apply(
+        lambda u: f'<img src="{u}" style="width:200px;border-radius:6px;display:block;margin-bottom:6px">'
+        if u and str(u) not in ("nan", "None", "")
+        else ""
+    )
+    df["maps_link"] = df.apply(
+        lambda r: f'<a href="https://maps.google.com/?q={r.lat},{r.lon}" target="_blank" style="color:#4af">🗺 Apri in Google Maps</a>',
+        axis=1,
+    )
+    df["coords"] = df["lat"].round(5).astype(str) + ", " + df["lon"].round(5).astype(str)
+
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        id="markers",
+        data=df,
+        get_position=["lon", "lat"],
+        get_fill_color="color",
+        get_radius=50,
+        radius_min_pixels=7,
+        radius_max_pixels=22,
+        pickable=True,
+        auto_highlight=True,
+    )
+
+    tooltip = {
+        "html": (
+            "{img_tag}"
+            "<b>{categoria}</b><br>"
+            "<span style='opacity:.7'>📍 {coords}</span><br><br>"
+            "{maps_link}"
+        ),
+        "style": {
+            "padding": "10px",
+            "borderRadius": "8px",
+            "maxWidth": "230px",
+            "fontSize": "13px",
+        },
+    }
+
+    return st.pydeck_chart(
+        pdk.Deck(
+            layers=[layer],
+            initial_view_state=pdk.ViewState(
+                latitude=df["lat"].mean(),
+                longitude=df["lon"].mean(),
+                zoom=13,
+            ),
+            tooltip=tooltip,
+        ),
+        on_select="rerun",
+        key=map_key,
+        width="stretch",
+        height=420,
+    )
+
 
 CSS_GLOBALE = """
 <style>
@@ -178,9 +247,9 @@ def inject_css():
 
 def mostra_onboarding(forza: bool = False):
     if forza:
-        st.components.v1.html(_RESET_ONBOARDING_JS, height=1)
+        st.iframe(_RESET_ONBOARDING_JS, height=1)
     else:
-        st.components.v1.html(_ONBOARDING_JS, height=1)
+        st.iframe(_ONBOARDING_JS, height=1)
 
 
 def render_header():
@@ -211,8 +280,8 @@ def render_step_upload():
     st.subheader("📸 Carica le foto del problema")
 
     files = st.file_uploader(
-        "Seleziona da 1 a 3 foto (JPG/PNG)",
-        type=["jpg", "jpeg", "png"],
+        "Seleziona da 1 a 3 foto",
+        type=["jpg", "jpeg", "png", "webp", "heic", "heif"],
         accept_multiple_files=True,
         key="uploader",
     )
@@ -294,7 +363,8 @@ def render_step_analisi():
     )
 
     if not st.session_state.salvato_db and lat is not None:
-        salvato = salva_su_supabase(lat, lon, cat)
+        img_bytes = st.session_state.immagini_bytes[0] if st.session_state.immagini_bytes else None
+        salvato = salva_su_supabase(lat, lon, cat, img_bytes)
         st.session_state.salvato_db = salvato
 
     mailto = genera_mailto(cat, descrizione_mod, lat, lon, dettaglio)
@@ -339,7 +409,7 @@ def render_step_fatto():
     st.cache_data.clear()
     df_fatto = carica_mappa()
     if not df_fatto.empty:
-        st.map(df_fatto[["lat", "lon"]], zoom=13, size=35)
+        render_pydeck_map(df_fatto, map_key="mappa_fatto")
 
 
 def render_map_section():
@@ -363,4 +433,42 @@ def render_map_section():
             icona = ICONE.get(cat, "📍")
             (col1 if i % 2 == 0 else col2).metric(f"{icona} {cat}", n)
 
-        st.map(df_mappa[["lat", "lon"]], zoom=13, size=35)
+        event = render_pydeck_map(df_mappa, map_key="mappa_principale")
+
+        selected = []
+        try:
+            selected = event.selection.objects.get("markers", [])
+        except Exception:
+            pass
+
+        if selected:
+            row = selected[0]
+            record_id = row.get("id", "")
+            image_url = row.get("image_url")
+            cat = row.get("categoria", "")
+            icona = ICONE.get(cat, "📍")
+
+            st.divider()
+            st.subheader(f"{icona} {cat}")
+            if image_url and str(image_url) not in ("nan", "None", ""):
+                st.image(image_url, width=280)
+            st.caption(f"📍 {row.get('lat', ''):.5f}, {row.get('lon', ''):.5f}")
+            st.markdown(
+                f'[🗺 Apri in Google Maps](https://maps.google.com/?q={row.get("lat")},{row.get("lon")})'
+            )
+
+            da_eliminare = st.session_state.get("da_eliminare")
+            if da_eliminare == record_id:
+                st.warning("Confermi di segnare come risolto? Il punto sarà rimosso.")
+                c1, c2 = st.columns(2)
+                if c1.button("✅ Sì, risolto", type="primary"):
+                    elimina_segnalazione(record_id, image_url)
+                    st.session_state.pop("da_eliminare", None)
+                    st.rerun()
+                if c2.button("Annulla"):
+                    st.session_state.pop("da_eliminare", None)
+                    st.rerun()
+            else:
+                if st.button("✔️ Segna come risolto", type="secondary"):
+                    st.session_state["da_eliminare"] = record_id
+                    st.rerun()

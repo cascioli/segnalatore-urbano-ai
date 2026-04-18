@@ -43,3 +43,12 @@ elif step == "fatto":
     render_step_fatto()
 
 render_map_section()
+
+st.divider()
+st.markdown(
+    '<p style="text-align:center;color:#888;font-size:0.85rem;">'
+    "Fatto con ❤️ per Foggia da "
+    '<a href="https://simonecascioli.it" target="_blank" style="color:#888;">Simone Cascioli</a>'
+    "</p>",
+    unsafe_allow_html=True,
+)
