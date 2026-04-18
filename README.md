@@ -42,12 +42,12 @@ Basta caricare una foto. Il resto lo fa l'app:
 
 | Feature | Descrizione |
 |---|---|
-| 📸 Analisi AI multimodale | Fino a 3 foto analizzate da Gemini 1.5/2.0 Flash |
+| 📸 Analisi AI multimodale | Fino a 3 foto analizzate da Gemini 2.5 Flash (fallback su 2.5 Flash Lite) |
 | 🗂️ Categorizzazione automatica | Buche, Rifiuti, Illuminazione/Reti, Altro |
 | 📍 GPS da EXIF | Coordinate estratte automaticamente dalla foto |
 | 🗺️ Geocoding fallback | Se il GPS manca, l'indirizzo viene convertito in coordinate via Nominatim (OSM) |
 | 📧 Email routing smart | L'email viene indirizzata all'ufficio comunale corretto in base alla categoria |
-| ⚡ Invio rapido o dettagliato | Scegli tra invio immediato o risposta a una domanda AI per arricchire la segnalazione |
+| ⚡ Domanda di follow-up AI | Gemini genera una domanda contestuale per arricchire la segnalazione |
 | 🌍 Mappa pubblica | Tutte le segnalazioni geolocalizzate visibili a tutti |
 | 🔒 Anonimato garantito | Nessun dato personale raccolto |
 
@@ -57,11 +57,12 @@ Basta caricare una foto. Il resto lo fa l'app:
 
 | Componente | Tecnologia |
 |---|---|
-| Frontend & logica | Python, Streamlit |
-| Intelligenza visiva | Google Gemini 1.5/2.0 Flash (`google-genai`) |
+| Frontend & logica | Python 3.10+, Streamlit |
+| Intelligenza visiva | Google Gemini 2.5 Flash + 2.5 Flash Lite (fallback automatico, `google-genai`) |
 | Database & mappa | Supabase (PostgreSQL) |
 | Geocoding | Nominatim / OpenStreetMap (gratuito, no API key) |
 | Estrazione GPS | `exifread`, `Pillow` |
+| Test | `pytest` |
 | Hosting | Streamlit Community Cloud |
 
 ---
