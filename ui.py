@@ -298,6 +298,15 @@ def render_step_upload():
         if len(files) > 3:
             st.error("Massimo 3 foto consentite.")
         else:
+            MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+            size_ok = True
+            for f in files:
+                if f.size > MAX_FILE_SIZE:
+                    st.error(f"❌ {f.name} supera il limite di 5 MB.")
+                    size_ok = False
+                    break
+            if not size_ok:
+                return
             immagini_bytes = []
             for f in files:
                 b = f.read()
@@ -372,8 +381,12 @@ def render_step_analisi():
 
     if not st.session_state.salvato_db and lat is not None:
         img_bytes = st.session_state.immagini_bytes[0] if st.session_state.immagini_bytes else None
-        salvato = salva_su_supabase(lat, lon, cat, img_bytes)
-        st.session_state.salvato_db = salvato
+        try:
+            salvato = salva_su_supabase(lat, lon, cat, img_bytes)
+            st.session_state.salvato_db = salvato
+        except ValueError as e:
+            st.error(f"Errore: {e}")
+            st.stop()
 
     mailto = genera_mailto(cat, descrizione_mod, lat, lon, dettaglio)
     st.session_state.mailto_pronto = mailto

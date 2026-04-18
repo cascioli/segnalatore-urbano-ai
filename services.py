@@ -16,7 +16,7 @@ from pillow_heif import register_heif_opener
 register_heif_opener()
 from supabase import create_client, Client
 
-from config import FOGGIA_BBOX, MODELLI_FALLBACK, ROUTING_EMAIL
+from config import CATEGORIE, FOGGIA_BBOX, MODELLI_FALLBACK, ROUTING_EMAIL
 
 
 @st.cache_resource
@@ -153,6 +153,10 @@ def _carica_foto_su_supabase(img_bytes: bytes, record_id: str) -> str | None:
 def salva_su_supabase(
     lat: float, lon: float, categoria: str, img_bytes: bytes | None = None
 ) -> bool:
+    if categoria not in CATEGORIE:
+        raise ValueError(f"Categoria non valida: {categoria}")
+    if not (41.3 <= lat <= 41.6 and 15.4 <= lon <= 15.7):
+        raise ValueError("Coordinate fuori dall'area di Foggia")
     try:
         record_id = str(uuid.uuid4())
         image_url = None
