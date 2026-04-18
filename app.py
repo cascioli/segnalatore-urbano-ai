@@ -55,6 +55,135 @@ st.markdown(
 )
 
 # ---------------------------------------------------------------------------
+# Onboarding (primo avvio) — modal con localStorage via window.parent
+# ---------------------------------------------------------------------------
+_ONBOARDING_JS = """
+<script>
+(function() {
+  try {
+    var p = window.parent;
+    if (p.localStorage.getItem('segnalatore_onboarding_done')) return;
+
+    var STEPS = [
+      {
+        icon: '🏙️',
+        title: 'Benvenuto!',
+        body: 'Segnala problemi urbani di Foggia direttamente agli uffici del Comune, in pochi tap e senza registrazione.'
+      },
+      {
+        icon: '📸',
+        title: 'Carica una foto',
+        body: 'Scatta o carica fino a 3 foto (JPG / PNG). La posizione GPS viene estratta automaticamente dai metadati.'
+      },
+      {
+        icon: '🤖',
+        title: "L\u2019AI analizza tutto",
+        body: 'Gemini AI esamina le immagini, riconosce il problema e genera una descrizione formale pronta per il Comune.'
+      },
+      {
+        icon: '🗂️',
+        title: 'Le 4 categorie',
+        body: null
+      },
+      {
+        icon: '🔒',
+        title: 'Privacy totale',
+        body: 'Nessun account, nessun dato personale. La segnalazione \u00e8 <strong>completamente anonima</strong>.'
+      },
+      {
+        icon: '\u2709\uFE0F',
+        title: 'Tutto pronto!',
+        body: "La segnalazione viene instradata all\u2019ufficio giusto del Comune. Ti basta premere <em>Invia</em> nell\u2019email."
+      }
+    ];
+
+    var current = 0;
+
+    var overlay = p.document.createElement('div');
+    overlay.id = 'ob-overlay';
+    overlay.style.cssText = [
+      'position:fixed', 'inset:0', 'background:rgba(0,0,0,.75)',
+      'z-index:99999', 'display:flex', 'align-items:center',
+      'justify-content:center', 'padding:16px', 'box-sizing:border-box'
+    ].join(';');
+
+    var card = p.document.createElement('div');
+    card.style.cssText = [
+      'background:#fff', 'border-radius:20px', 'padding:32px 28px 24px',
+      'max-width:360px', 'width:100%',
+      'box-shadow:0 20px 60px rgba(0,0,0,.3)',
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+      'box-sizing:border-box'
+    ].join(';');
+
+    overlay.appendChild(card);
+    p.document.body.appendChild(overlay);
+
+    function dismiss() {
+      p.localStorage.setItem('segnalatore_onboarding_done', '1');
+      overlay.remove();
+    }
+
+    function render() {
+      var s = STEPS[current];
+      var isLast = current === STEPS.length - 1;
+
+      var dots = '';
+      for (var i = 0; i < STEPS.length; i++) {
+        dots += '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 3px;background:' +
+          (i === current ? '#e74c3c' : '#ddd') + ';transition:background .2s;"></span>';
+      }
+
+      var bodyHtml;
+      var cell = 'background:#f8f8f8;border-radius:10px;padding:10px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:90px;';
+      if (current === 3) {
+        bodyHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">' +
+          '<div style="' + cell + '"><span style="font-size:1.6rem">🗑️</span><strong style="font-size:.85rem;color:#333;">Rifiuti</strong><span style="font-size:.72rem;color:#777;">Spazzatura abbandonata, cassonetti pieni</span></div>' +
+          '<div style="' + cell + '"><span style="font-size:1.6rem">🕳️</span><strong style="font-size:.85rem;color:#333;">Buche</strong><span style="font-size:.72rem;color:#777;">Asfalto dissestato, marciapiedi rotti</span></div>' +
+          '<div style="' + cell + '"><span style="font-size:1.6rem">💡</span><strong style="font-size:.85rem;color:#333;">Illuminazione</strong><span style="font-size:.72rem;color:#777;">Lampioni spenti o guasti da tempo</span></div>' +
+          '<div style="' + cell + '"><span style="font-size:1.6rem">⚠️</span><strong style="font-size:.85rem;color:#333;">Altro</strong><span style="font-size:.72rem;color:#777;">Qualsiasi altro problema urbano</span></div>' +
+          '</div>';
+      } else {
+        bodyHtml = '<p style="color:#555;font-size:.95rem;line-height:1.65;text-align:center;margin:0;">' + s.body + '</p>';
+      }
+
+      card.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+          '<div>' + dots + '</div>' +
+          '<button id="ob-skip" style="background:none;border:none;color:#bbb;font-size:.85rem;cursor:pointer;padding:4px 8px;line-height:1;">Salta</button>' +
+        '</div>' +
+        '<div style="font-size:3rem;text-align:center;margin-bottom:10px;line-height:1;">' + s.icon + '</div>' +
+        '<h2 style="text-align:center;margin:0 0 14px;font-size:1.25rem;color:#111;font-weight:700;">' + s.title + '</h2>' +
+        bodyHtml +
+        '<div style="display:flex;gap:10px;margin-top:28px;">' +
+          (current > 0
+            ? '<button id="ob-prev" style="flex:1;padding:13px;border:1.5px solid #ddd;background:#fff;border-radius:10px;cursor:pointer;font-size:.95rem;color:#555;">← Indietro</button>'
+            : '') +
+          '<button id="ob-next" style="flex:2;padding:13px;background:#e74c3c;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:1rem;font-weight:600;">' +
+            (isLast ? '🚀 Inizia!' : 'Avanti →') +
+          '</button>' +
+        '</div>';
+
+      p.document.getElementById('ob-skip').addEventListener('click', dismiss);
+      p.document.getElementById('ob-next').addEventListener('click', function() {
+        if (isLast) { dismiss(); } else { current++; render(); }
+      });
+      var prev = p.document.getElementById('ob-prev');
+      if (prev) prev.addEventListener('click', function() { current--; render(); });
+    }
+
+    render();
+  } catch (e) {}
+})();
+</script>
+"""
+
+
+def mostra_onboarding():
+    st.iframe(_ONBOARDING_JS, height=1)
+
+
+# ---------------------------------------------------------------------------
 # Routing email per categoria
 # ---------------------------------------------------------------------------
 ROUTING_EMAIL = {
@@ -306,6 +435,7 @@ def reset_stato():
 
 
 init_session_state()
+mostra_onboarding()
 
 # ---------------------------------------------------------------------------
 # Header
