@@ -48,7 +48,7 @@ st.divider()
 st.markdown(
     '<p style="text-align:center;color:#888;font-size:0.85rem;">'
     "Fatto con ❤️ per Foggia da "
-    '<a href="https://simonecascioli.it" target="_blank" style="color:#888;">Simone Cascioli</a>'
+    '<a href="https://github.com/cascioli/segnalatore-urbano-ai" target="_blank" style="color:#888;">Simone Cascioli</a>'
     "</p>",
     unsafe_allow_html=True,
 )
