@@ -464,7 +464,7 @@ def render_map_section():
         selected = []
         try:
             selected = event.selection.objects.get("markers", [])
-        except Exception:
+        except (AttributeError, TypeError):
             pass
 
         if selected:

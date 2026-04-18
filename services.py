@@ -1,6 +1,8 @@
 import io
 import json
 import re
+from datetime import datetime, timezone
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -48,7 +50,7 @@ def geocodifica_indirizzo(indirizzo: str) -> tuple[float, float] | None:
             data = json.loads(resp.read())
         if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
-    except Exception:
+    except (urllib.error.URLError, json.JSONDecodeError, KeyError, ValueError):
         pass
     return None
 
@@ -216,7 +218,10 @@ def carica_mappa() -> pd.DataFrame:
 
 def elimina_segnalazione(record_id: str, image_url: str | None) -> bool:
     try:
-        get_supabase().table("segnalazioni").update({"resolved": True}).eq("id", record_id).execute()
+        get_supabase().table("segnalazioni").update({
+            "resolved": True,
+            "resolved_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", record_id).execute()
         st.cache_data.clear()
         return True
     except Exception as e:
