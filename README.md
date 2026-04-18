@@ -137,19 +137,36 @@ Apri [http://localhost:8501](http://localhost:8501) nel browser.
 Esegui questo SQL nell'editor di Supabase (`SQL Editor → New query`):
 
 ```sql
+-- Se aggiorni una tabella esistente (aggiunge colonne mancanti):
+alter table segnalazioni
+  add column if not exists image_url text,
+  add column if not exists resolved  boolean not null default false;
+
+-- Backfill se resolved è NULL su righe vecchie:
+update segnalazioni set resolved = false where resolved is null;
+
+-- Schema completo (creazione da zero):
 create table segnalazioni (
   id         uuid primary key default gen_random_uuid(),
   lat        float8,
   lon        float8,
   categoria  text not null,
+  image_url  text,
+  resolved   boolean not null default false,
   created_at timestamptz default now()
 );
-
--- Lettura pubblica (per la mappa)
-alter table segnalazioni enable row level security;
-create policy "public read"   on segnalazioni for select using (true);
-create policy "public insert" on segnalazioni for insert with check (true);
 ```
+
+Poi applica le policy RLS eseguendo `supabase/migrations/002_rls_policies.sql` nell'editor SQL di Supabase (o incollane il contenuto direttamente).
+
+Le policy definite:
+
+| Policy | Operazione | Regola |
+|--------|-----------|--------|
+| `public_read` | SELECT | Tutti possono leggere |
+| `public_insert` | INSERT | Solo coords Foggia + categoria valida |
+| `public_resolve` | UPDATE | Solo `resolved false → true` |
+| `no_delete` | DELETE | Bloccato esplicitamente |
 
 ---
 

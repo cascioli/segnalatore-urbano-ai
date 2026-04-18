@@ -1,4 +1,6 @@
+import html
 import io
+import re
 
 import pydeck as pdk
 import streamlit as st
@@ -17,6 +19,16 @@ from services import (
 )
 from state import init_session_state, reset_stato
 
+_TRUSTED_IMG = re.compile(r"^https://[a-z0-9]+\.supabase\.co/", re.IGNORECASE)
+
+
+def _safe_img_tag(url: str) -> str:
+    s = str(url).strip()
+    if s and s not in ("nan", "None") and _TRUSTED_IMG.match(s):
+        return f'<img src="{html.escape(s)}" style="width:200px;border-radius:6px;display:block;margin-bottom:6px">'
+    return ""
+
+
 _COLORI_PYDECK = {
     "Rifiuti": [76, 187, 23, 220],
     "Buche": [255, 140, 0, 220],
@@ -28,11 +40,7 @@ _COLORI_PYDECK = {
 def render_pydeck_map(df, map_key: str = "mappa"):
     df = df.copy()
     df["color"] = df["categoria"].apply(lambda c: _COLORI_PYDECK.get(c, [160, 160, 160, 220]))
-    df["img_tag"] = df["image_url"].apply(
-        lambda u: f'<img src="{u}" style="width:200px;border-radius:6px;display:block;margin-bottom:6px">'
-        if u and str(u) not in ("nan", "None", "")
-        else ""
-    )
+    df["img_tag"] = df["image_url"].apply(_safe_img_tag)
     df["maps_link"] = df.apply(
         lambda r: f'<a href="https://maps.google.com/?q={r.lat},{r.lon}" target="_blank" style="color:#4af">🗺 Apri in Google Maps</a>',
         axis=1,
