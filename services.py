@@ -200,6 +200,7 @@ def carica_mappa() -> pd.DataFrame:
             get_supabase()
             .table("segnalazioni")
             .select("id,lat,lon,categoria,image_url")
+            .eq("resolved", False)
             .execute()
         )
         if risposta.data:
@@ -211,11 +212,9 @@ def carica_mappa() -> pd.DataFrame:
 
 def elimina_segnalazione(record_id: str, image_url: str | None) -> bool:
     try:
-        get_supabase().table("segnalazioni").delete().eq("id", record_id).execute()
-        if image_url and str(image_url) not in ("nan", "None", ""):
-            get_supabase().storage.from_("segnalazioni-foto").remove([f"{record_id}.jpg"])
+        get_supabase().table("segnalazioni").update({"resolved": True}).eq("id", record_id).execute()
         st.cache_data.clear()
         return True
     except Exception as e:
-        st.error(f"Errore eliminazione: {e}")
+        st.error(f"Errore risoluzione: {e}")
         return False
