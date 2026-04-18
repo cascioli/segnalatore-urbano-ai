@@ -338,8 +338,13 @@ def render_step_upload():
                         st.warning(
                             "Posizione non trovata — la segnalazione non apparirà in mappa."
                         )
+                LIMITE_ANALISI = 10
+                if st.session_state.get("analyses_today", 0) >= LIMITE_ANALISI:
+                    st.error("Limite di analisi raggiunto per questa sessione.")
+                    st.stop()
                 with st.spinner("Analisi AI in corso..."):
                     analisi = analizza_con_gemini(get_gemini(), immagini_bytes)
+                st.session_state["analyses_today"] = st.session_state.get("analyses_today", 0) + 1
                 st.session_state.analisi = analisi
                 st.session_state.step = "analisi"
                 st.rerun()

@@ -11,6 +11,7 @@ def init_session_state():
         "salvato_db": False,
         "mailto_pronto": "",
         "reset_onboarding": False,
+        "analyses_today": 0,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
