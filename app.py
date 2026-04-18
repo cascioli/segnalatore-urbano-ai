@@ -91,7 +91,7 @@ _ONBOARDING_JS = """
         body: 'Nessun account, nessun dato personale. La segnalazione \u00e8 <strong>completamente anonima</strong>.'
       },
       {
-        icon: '\u2709\uFE0F',
+        icon: '\u2709\ufe0f',
         title: 'Tutto pronto!',
         body: "La segnalazione viene instradata all\u2019ufficio giusto del Comune. Ti basta premere <em>Invia</em> nell\u2019email."
       }
@@ -179,8 +179,23 @@ _ONBOARDING_JS = """
 """
 
 
-def mostra_onboarding():
-    st.iframe(_ONBOARDING_JS, height=1)
+_RESET_ONBOARDING_JS = (
+    """
+<script>
+(function() {
+  try { window.parent.localStorage.removeItem('segnalatore_onboarding_done'); } catch(e) {}
+})();
+</script>
+"""
+    + _ONBOARDING_JS
+)
+
+
+def mostra_onboarding(forza: bool = False):
+    if forza:
+        st.iframe(_RESET_ONBOARDING_JS, height=1)
+    else:
+        st.iframe(_ONBOARDING_JS, height=1)
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +237,8 @@ def geocodifica_indirizzo(indirizzo: str) -> tuple[float, float] | None:
             "q": indirizzo + ", Foggia, Italia",
             "format": "json",
             "limit": "1",
+            "viewbox": "15.45,41.55,15.65,41.40",
+            "bounded": "1",
         }
     )
     url = f"https://nominatim.openstreetmap.org/search?{query}"
@@ -413,6 +430,7 @@ def init_session_state():
         "analisi": None,
         "salvato_db": False,
         "mailto_pronto": "",
+        "reset_onboarding": False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -435,13 +453,22 @@ def reset_stato():
 
 
 init_session_state()
-mostra_onboarding()
+mostra_onboarding(forza=st.session_state.reset_onboarding)
+if st.session_state.reset_onboarding:
+    st.session_state.reset_onboarding = False
 
 # ---------------------------------------------------------------------------
 # Header
 # ---------------------------------------------------------------------------
-st.title("🏙️ Segnalatore Urbano")
-st.caption("Comune di Foggia — La tua voce per una città migliore")
+col_titolo, col_guida = st.columns([5, 1])
+with col_titolo:
+    st.title("🏙️ Segnalatore Urbano")
+    st.caption("Comune di Foggia — La tua voce per una città migliore")
+with col_guida:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("❓ Come funziona", help="Rivedi come funziona l'app"):
+        st.session_state.reset_onboarding = True
+        st.rerun()
 
 # ---------------------------------------------------------------------------
 # Indicatore di progresso
@@ -596,7 +623,9 @@ elif step == "analisi":
 elif step == "fatto":
     st.balloons()
     st.success("✅ Grazie! La tua segnalazione è stata registrata.")
-    st.caption("Il Comune riceverà la tua email. Puoi chiuderla o modificarla prima di inviarla.")
+    st.caption(
+        "Il Comune riceverà la tua email. Puoi chiuderla o modificarla prima di inviarla."
+    )
 
     if st.button("📸 Nuova segnalazione"):
         reset_stato()
@@ -608,7 +637,7 @@ elif step == "fatto":
     st.cache_data.clear()
     df_fatto = carica_mappa()
     if not df_fatto.empty:
-        st.map(df_fatto[["lat", "lon"]], zoom=13)
+        st.map(df_fatto[["lat", "lon"]], zoom=13, size=35)
 
 # ===========================================================================
 # MAPPA (sempre visibile, sotto il form)
@@ -634,4 +663,4 @@ else:
         icona = ICONE.get(cat, "📍")
         (col1 if i % 2 == 0 else col2).metric(f"{icona} {cat}", n)
 
-    st.map(df_mappa[["lat", "lon"]], zoom=13)
+    st.map(df_mappa[["lat", "lon"]], zoom=13, size=35)
