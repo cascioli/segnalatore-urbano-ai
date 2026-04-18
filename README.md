@@ -14,7 +14,7 @@
   </a>
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"/>
   <img src="https://img.shields.io/badge/built%20with-Streamlit-ff4b4b.svg" alt="Streamlit"/>
-  <a href="https://cascioli-segnalatore-urbano-ai-app-gclouj.streamlit.app/">
+  <a href="https://segnalafoggia.streamlit.app">
     <img src="https://img.shields.io/badge/Streamlit-Open%20App-ff4b4b?logo=streamlit&logoColor=white" alt="Open in Streamlit"/>
   </a>
 </p>
