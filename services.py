@@ -32,26 +32,38 @@ def get_gemini():
 
 
 def geocodifica_indirizzo(indirizzo: str) -> tuple[float, float] | None:
-    query = urllib.parse.urlencode(
+    base_q = indirizzo.strip()
+    if "foggia" not in base_q.lower():
+        base_q += ", Foggia, Italia"
+
+    for params in [
         {
-            "q": indirizzo + ", Foggia, Italia",
+            "q": base_q,
             "format": "json",
-            "limit": "1",
+            "limit": "5",
+            "countrycodes": "it",
             "viewbox": FOGGIA_BBOX,
-            "bounded": "1",
-        }
-    )
-    url = f"https://nominatim.openstreetmap.org/search?{query}"
-    req = urllib.request.Request(
-        url, headers={"User-Agent": "SegnalatorUrbanoFoggia/1.0"}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read())
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
-    except (urllib.error.URLError, json.JSONDecodeError, KeyError, ValueError):
-        pass
+            "bounded": "0",
+        },
+        {
+            "q": base_q,
+            "format": "json",
+            "limit": "5",
+            "countrycodes": "it",
+        },
+    ]:
+        query = urllib.parse.urlencode(params)
+        url = f"https://nominatim.openstreetmap.org/search?{query}"
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "SegnalatorUrbanoFoggia/1.0"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read())
+            if data:
+                return float(data[0]["lat"]), float(data[0]["lon"])
+        except (OSError, json.JSONDecodeError, KeyError, ValueError):
+            pass
     return None
 
 
