@@ -10,6 +10,7 @@ from config import CATEGORIE, ICONE
 from services import (
     analizza_con_gemini,
     carica_mappa,
+    comprimi_immagine,
     elimina_segnalazione,
     estrai_gps_da_exif,
     genera_mailto,
@@ -298,22 +299,26 @@ def render_step_upload():
         if len(files) > 3:
             st.error("Massimo 3 foto consentite.")
         else:
-            MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+            MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB safety limit
             size_ok = True
             for f in files:
                 if f.size > MAX_FILE_SIZE:
-                    st.error(f"❌ {f.name} supera il limite di 5 MB.")
+                    st.error(f"❌ {f.name} supera il limite di 50 MB.")
                     size_ok = False
                     break
             if not size_ok:
                 return
             immagini_bytes = []
-            for f in files:
+            original_first_bytes = None
+            for i, f in enumerate(files):
                 b = f.read()
+                if i == 0:
+                    original_first_bytes = b
+                b = comprimi_immagine(b)
                 immagini_bytes.append(b)
                 st.image(Image.open(io.BytesIO(b)), caption=f.name, width="stretch")
 
-            gps = estrai_gps_da_exif(immagini_bytes[0])
+            gps = estrai_gps_da_exif(original_first_bytes)
             st.session_state.gps = gps
 
             if gps:

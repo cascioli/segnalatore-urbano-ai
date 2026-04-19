@@ -89,6 +89,27 @@ def estrai_gps_da_exif(file_bytes: bytes) -> tuple[float, float] | None:
     return None
 
 
+def comprimi_immagine(img_bytes: bytes, max_bytes: int = 2 * 1024 * 1024) -> bytes:
+    if len(img_bytes) <= max_bytes:
+        return img_bytes
+    _orig_limit = Image.MAX_IMAGE_PIXELS
+    Image.MAX_IMAGE_PIXELS = 200_000_000  # 200MP: covers high-res phone cameras
+    try:
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+    finally:
+        Image.MAX_IMAGE_PIXELS = _orig_limit
+    w, h = img.size
+    if max(w, h) > 1920:
+        scale = 1920 / max(w, h)
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    for quality in (85, 75, 65, 55, 45):
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality)
+        if buf.tell() <= max_bytes:
+            return buf.getvalue()
+    return buf.getvalue()
+
+
 def analizza_con_gemini(
     model, immagini_bytes: list[bytes], dettaglio_utente: str = ""
 ) -> dict:
