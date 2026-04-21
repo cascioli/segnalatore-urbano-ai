@@ -41,6 +41,8 @@ _COLORI_PYDECK = {
 
 def render_pydeck_map(df, map_key: str = "mappa"):
     df = df.copy()
+    counts = df.groupby(["lat", "lon"]).size().reset_index(name="count_at_location")
+    df = df.merge(counts, on=["lat", "lon"])
     df["color"] = df["categoria"].apply(lambda c: _COLORI_PYDECK.get(c, [160, 160, 160, 220]))
     df["img_tag"] = df["image_url"].apply(_safe_img_tag)
     df["maps_link"] = df.apply(
@@ -48,6 +50,10 @@ def render_pydeck_map(df, map_key: str = "mappa"):
         axis=1,
     )
     df["coords"] = df["lat"].round(5).astype(str) + ", " + df["lon"].round(5).astype(str)
+    df["radius"] = 50 + (df["count_at_location"] - 1) * 25
+    df["count_label"] = df["count_at_location"].apply(
+        lambda n: f"<b style='color:#f90'>⚠ {n} segnalazioni in questo punto</b><br>" if n > 1 else ""
+    )
 
     layer = pdk.Layer(
         "ScatterplotLayer",
@@ -55,15 +61,16 @@ def render_pydeck_map(df, map_key: str = "mappa"):
         data=df,
         get_position=["lon", "lat"],
         get_fill_color="color",
-        get_radius=50,
+        get_radius="radius",
         radius_min_pixels=7,
-        radius_max_pixels=22,
+        radius_max_pixels=32,
         pickable=True,
         auto_highlight=True,
     )
 
     tooltip = {
         "html": (
+            "{count_label}"
             "{img_tag}"
             "<b>{categoria}</b><br>"
             "<span style='opacity:.7'>📍 {coords}</span><br><br>"
@@ -416,10 +423,11 @@ def render_step_analisi():
 
     if not st.session_state.salvato_db and lat is not None:
         img_bytes = st.session_state.immagini_bytes[0] if st.session_state.immagini_bytes else None
+        st.session_state.salvato_db = True  # set before attempt to prevent retry on any failure
         try:
-            salvato = salva_su_supabase(lat, lon, cat, img_bytes)
-            st.session_state.salvato_db = salvato
+            salva_su_supabase(lat, lon, cat, img_bytes)
         except ValueError as e:
+            st.session_state.salvato_db = False  # validation error: let user correct and retry
             st.error(f"Errore: {e}")
             st.stop()
 
@@ -499,32 +507,40 @@ def render_map_section():
 
         if selected:
             row = selected[0]
-            record_id = row.get("id", "")
-            image_url = row.get("image_url")
-            cat = row.get("categoria", "")
-            icona = ICONE.get(cat, "📍")
+            sel_lat, sel_lon = row.get("lat"), row.get("lon")
+
+            # All records at this location (may be > 1)
+            siblings = df_mappa[
+                (df_mappa["lat"] == sel_lat) & (df_mappa["lon"] == sel_lon)
+            ].to_dict("records")
 
             st.divider()
-            st.subheader(f"{icona} {cat}")
-            if image_url and str(image_url) not in ("nan", "None", ""):
-                st.image(image_url, width=280)
-            st.caption(f"📍 {row.get('lat', ''):.5f}, {row.get('lon', ''):.5f}")
-            st.markdown(
-                f'[🗺 Apri in Google Maps](https://maps.google.com/?q={row.get("lat")},{row.get("lon")})'
-            )
+            st.caption(f"📍 {sel_lat:.5f}, {sel_lon:.5f}")
+            st.markdown(f'[🗺 Apri in Google Maps](https://maps.google.com/?q={sel_lat},{sel_lon})')
 
-            da_eliminare = st.session_state.get("da_eliminare")
-            if da_eliminare == record_id:
-                st.warning("Confermi di segnare come risolto? Il punto sarà rimosso.")
-                c1, c2 = st.columns(2)
-                if c1.button("✅ Sì, risolto", type="primary"):
-                    elimina_segnalazione(record_id, image_url)
-                    st.session_state.pop("da_eliminare", None)
-                    st.rerun()
-                if c2.button("Annulla"):
-                    st.session_state.pop("da_eliminare", None)
-                    st.rerun()
-            else:
-                if st.button("✔️ Segna come risolto", type="secondary"):
-                    st.session_state["da_eliminare"] = record_id
-                    st.rerun()
+            for rec in siblings:
+                record_id = rec.get("id", "")
+                image_url = rec.get("image_url")
+                cat = rec.get("categoria", "")
+                icona = ICONE.get(cat, "📍")
+
+                with st.container(border=True):
+                    st.subheader(f"{icona} {cat}")
+                    if image_url and str(image_url) not in ("nan", "None", ""):
+                        st.image(image_url, width=280)
+
+                    da_eliminare = st.session_state.get("da_eliminare")
+                    if da_eliminare == record_id:
+                        st.warning("Confermi di segnare come risolto? Il punto sarà rimosso.")
+                        c1, c2 = st.columns(2)
+                        if c1.button("✅ Sì, risolto", type="primary", key=f"ok_{record_id}"):
+                            elimina_segnalazione(record_id, image_url)
+                            st.session_state.pop("da_eliminare", None)
+                            st.rerun()
+                        if c2.button("Annulla", key=f"no_{record_id}"):
+                            st.session_state.pop("da_eliminare", None)
+                            st.rerun()
+                    else:
+                        if st.button("✔️ Segna come risolto", type="secondary", key=f"risolvi_{record_id}"):
+                            st.session_state["da_eliminare"] = record_id
+                            st.rerun()
