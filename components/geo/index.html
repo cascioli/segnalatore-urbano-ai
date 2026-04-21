@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>body{margin:0;padding:0;height:0;overflow:hidden}</style></head>
+<body>
+<script>
+(function () {
+  var sent = false;
+
+  function send(value) {
+    if (sent) return;
+    sent = true;
+    window.parent.postMessage({
+      isStreamlitMessage: true,
+      type: "streamlit:setComponentValue",
+      value: value,
+      dataType: "json"
+    }, "*");
+  }
+
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:componentReady",
+    apiVersion: 1
+  }, "*");
+
+  window.addEventListener("message", function (evt) {
+    if (evt.data.type !== "streamlit:render") return;
+    var geo = window.parent.navigator.geolocation;
+    if (!geo) { send({ error: 2 }); return; }
+    try {
+      geo.getCurrentPosition(
+        function (pos) {
+          send({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        },
+        function (err) {
+          send({ error: err.code });
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    } catch (e) {
+      send({ error: 99 });
+    }
+  });
+}());
+</script>
+</body>
+</html>

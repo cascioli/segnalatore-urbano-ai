@@ -1,6 +1,7 @@
 import html
 import io
 import re
+from pathlib import Path
 
 import pydeck as pdk
 import streamlit as st
@@ -250,6 +251,25 @@ _RESET_ONBOARDING_JS = (
 )
 
 
+_geo_component = st.components.v1.declare_component(
+    "geo_location",
+    path=str(Path(__file__).parent / "components" / "geo"),
+)
+
+
+def _chiedi_gps_browser() -> None:
+    st.info("📍 Rilevamento posizione in corso…")
+    result = _geo_component(key="geo_location", default=None)
+    if result is not None:
+        if "lat" in result:
+            st.session_state.gps = (result["lat"], result["lon"])
+            st.session_state.geo_denied = False
+        else:
+            st.session_state.geo_denied = True
+        st.rerun()
+    st.stop()
+
+
 def inject_css():
     st.markdown(CSS_GLOBALE, unsafe_allow_html=True)
 
@@ -318,13 +338,18 @@ def render_step_upload():
                 immagini_bytes.append(b)
                 st.image(Image.open(io.BytesIO(b)), caption=f.name, width="stretch")
 
-            gps = estrai_gps_da_exif(original_first_bytes)
-            st.session_state.gps = gps
+            exif_gps = estrai_gps_da_exif(original_first_bytes)
 
-            if gps:
-                st.success(f"📍 Posizione rilevata automaticamente")
+            if exif_gps:
+                st.session_state.gps = exif_gps
+                st.session_state.geo_denied = False
+                st.success("📍 Posizione rilevata automaticamente")
+            elif st.session_state.gps is not None:
+                st.success("📍 Posizione rilevata dal dispositivo")
+            elif not st.session_state.get("geo_denied", False):
+                _chiedi_gps_browser()
             else:
-                st.warning("⚠️ Nessuna posizione GPS nelle foto.")
+                st.warning("⚠️ Posizione GPS non disponibile.")
                 st.session_state.indirizzo_manuale = st.text_input(
                     "Descrivi dove si trova il problema:",
                     placeholder="es. Via Napoli 45, vicino alla farmacia",
@@ -332,7 +357,7 @@ def render_step_upload():
 
             if st.button("🔍 Analizza con AI", type="primary"):
                 st.session_state.immagini_bytes = immagini_bytes
-                if not gps and st.session_state.indirizzo_manuale.strip():
+                if st.session_state.gps is None and st.session_state.indirizzo_manuale.strip():
                     with st.spinner("Ricerca posizione..."):
                         coords = geocodifica_indirizzo(
                             st.session_state.indirizzo_manuale

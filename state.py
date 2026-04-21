@@ -12,6 +12,7 @@ def init_session_state():
         "mailto_pronto": "",
         "reset_onboarding": False,
         "analyses_today": 0,
+        "geo_denied": False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -27,6 +28,7 @@ def reset_stato():
         "salvato_db",
         "indirizzo_manuale",
         "mailto_pronto",
+        "geo_denied",
     ]:
         if k in st.session_state:
             del st.session_state[k]
