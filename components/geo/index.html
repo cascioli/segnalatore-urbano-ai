@@ -25,21 +25,47 @@
 
   window.addEventListener("message", function (evt) {
     if (evt.data.type !== "streamlit:render") return;
-    var geo = window.parent.navigator.geolocation;
-    if (!geo) { send({ error: 2 }); return; }
+
+    // Inject into the parent page context so Safari's Permissions Policy
+    // doesn't block geolocation (iframe restriction does not apply there).
     try {
-      geo.getCurrentPosition(
-        function (pos) {
-          send({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-        },
-        function (err) {
-          send({ error: err.code });
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
+      var script = window.parent.document.createElement("script");
+      script.id = "__geoScript";
+      script.textContent = [
+        "(function() {",
+        "  if (window.__geoInProgress) return;",
+        "  window.__geoInProgress = true;",
+        "  window.__geoResult = undefined;",
+        "  if (!navigator.geolocation) { window.__geoResult = {error: 2}; return; }",
+        "  navigator.geolocation.getCurrentPosition(",
+        "    function(p) { window.__geoResult = {lat: p.coords.latitude, lon: p.coords.longitude}; },",
+        "    function(e) { window.__geoResult = {error: e.code}; },",
+        "    {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000}",
+        "  );",
+        "})()"
+      ].join("\n");
+      window.parent.document.head.appendChild(script);
     } catch (e) {
       send({ error: 99 });
+      return;
     }
+
+    // Poll parent window for result (max 12 s).
+    var attempts = 0;
+    var poll = setInterval(function () {
+      attempts++;
+      var r = window.parent.__geoResult;
+      if (r !== undefined) {
+        clearInterval(poll);
+        window.parent.__geoInProgress = false;
+        window.parent.__geoResult = undefined;
+        send(r);
+      } else if (attempts > 60) {
+        clearInterval(poll);
+        window.parent.__geoInProgress = false;
+        send({ error: 3 });
+      }
+    }, 200);
   });
 }());
 </script>
