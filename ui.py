@@ -263,7 +263,9 @@ def _chiedi_gps_browser() -> None:
     from streamlit_geolocation import streamlit_geolocation
     result = streamlit_geolocation()
     st.caption(f"[GEO DEBUG] result={result!r}")
-    if result is not None:
+    # streamlit_geolocation returns {'latitude': None, ...} as default state
+    # (not Python None). Only act when latitude or error code is actually set.
+    if result is not None and (result.get("latitude") is not None or result.get("code") is not None):
         lat = result.get("latitude")
         lon = result.get("longitude")
         st.caption(f"[GEO DEBUG] lat={lat!r} lon={lon!r} code={result.get('code')!r}")
@@ -275,10 +277,10 @@ def _chiedi_gps_browser() -> None:
             st.session_state.geo_denied = True
             st.caption("[GEO DEBUG] → denied, rerunning")
         else:
-            st.caption(f"[GEO DEBUG] → result non-None ma no lat/lon/denied, rerunning")
+            st.caption(f"[GEO DEBUG] → code={result.get('code')!r}, rerunning")
         st.rerun()
     else:
-        st.caption("[GEO DEBUG] result=None → st.stop()")
+        st.caption("[GEO DEBUG] → stato default, attendo click")
     st.stop()
 
 
@@ -351,7 +353,6 @@ def render_step_upload():
                 st.image(Image.open(io.BytesIO(b)), caption=f.name, width="stretch")
 
             exif_gps = estrai_gps_da_exif(original_first_bytes)
-            st.caption(f"[UPLOAD DEBUG] exif_gps={exif_gps!r} gps={st.session_state.gps!r} geo_denied={st.session_state.get('geo_denied')!r}")
 
             if exif_gps:
                 st.session_state.gps = exif_gps
