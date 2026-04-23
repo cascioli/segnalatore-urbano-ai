@@ -316,7 +316,7 @@ def render_step_upload():
     st.subheader("📸 Carica le foto del problema")
 
     files = st.file_uploader(
-        "Seleziona da 1 a 3 foto",
+        "Seleziona da 1 a 3 foto — l'AI sceglierà la migliore",
         type=["jpg", "jpeg", "png", "webp", "heic", "heif"],
         accept_multiple_files=True,
         key="uploader",
@@ -395,7 +395,10 @@ def render_step_analisi():
     icona = ICONE.get(cat, "📍")
 
     if st.session_state.immagini_bytes:
-        st.image(Image.open(io.BytesIO(st.session_state.immagini_bytes[0])), width=220)
+        best_idx = int(analisi.get("foto_migliore", 0))
+        if best_idx < 0 or best_idx >= len(st.session_state.immagini_bytes):
+            best_idx = 0
+        st.image(Image.open(io.BytesIO(st.session_state.immagini_bytes[best_idx])), width=220)
 
     st.info(f"{icona} **Categoria rilevata: {cat}**")
 
@@ -422,7 +425,7 @@ def render_step_analisi():
     )
 
     if not st.session_state.salvato_db and lat is not None:
-        img_bytes = st.session_state.immagini_bytes[0] if st.session_state.immagini_bytes else None
+        img_bytes = st.session_state.immagini_bytes[best_idx] if st.session_state.immagini_bytes else None
         st.session_state.salvato_db = True  # set before attempt to prevent retry on any failure
         try:
             salva_su_supabase(lat, lon, cat, img_bytes)

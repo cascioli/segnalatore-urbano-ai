@@ -118,7 +118,8 @@ Analizza le immagini fornite e rispondi SOLO nel seguente formato JSON, senza ma
 {{
   "categoria": "<una tra: Rifiuti, Buche, Illuminazione, Altro>",
   "descrizione": "<testo breve (max 3 frasi) che descrive il problema per un'email formale al Comune>",
-  "domanda_followup": "<una singola domanda pertinente per ottenere più dettagli dall'utente>"
+  "domanda_followup": "<una singola domanda pertinente per ottenere più dettagli dall'utente>",
+  "foto_migliore": <indice 0-based della foto più nitida e rappresentativa del problema tra quelle fornite>
 }}
 
 Categorie disponibili:
