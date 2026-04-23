@@ -261,7 +261,7 @@ _RESET_ONBOARDING_JS = (
 def _chiedi_gps_browser() -> None:
     # Lazy import: avoids module-level declare_component crash on Python 3.14.
     from streamlit_geolocation import streamlit_geolocation
-    result = streamlit_geolocation(key="geo_loc")
+    result = streamlit_geolocation()
     if result is not None:
         lat = result.get("latitude")
         lon = result.get("longitude")
