@@ -259,28 +259,30 @@ _RESET_ONBOARDING_JS = (
 
 
 def _chiedi_gps_browser() -> None:
-    # Lazy import: avoids module-level declare_component crash on Python 3.14.
-    from streamlit_geolocation import streamlit_geolocation
-    result = streamlit_geolocation()
+    # declare_component inside function: safe on Python 3.14 (not module-level).
+    # Streamlit registry is idempotent for same name+path.
+    comp = st.components.v1.declare_component(
+        "geo_location",
+        path=str(Path(__file__).parent / "components" / "geo"),
+    )
+    comp(key="geo_location", default=None)
+    # Read directly from session_state — more reliable than return value when
+    # st.stop() is in play (return value can be stale on rerun).
+    result = st.session_state.get("geo_location")
     st.caption(f"[GEO DEBUG] result={result!r}")
-    # streamlit_geolocation returns {'latitude': None, ...} as default state
-    # (not Python None). Only act when latitude or error code is actually set.
-    if result is not None and (result.get("latitude") is not None or result.get("code") is not None):
-        lat = result.get("latitude")
-        lon = result.get("longitude")
-        st.caption(f"[GEO DEBUG] lat={lat!r} lon={lon!r} code={result.get('code')!r}")
-        if lat is not None and lon is not None:
-            st.session_state.gps = (float(lat), float(lon))
+    if result is not None:
+        if "lat" in result:
+            st.session_state.gps = (result["lat"], result["lon"])
             st.session_state.geo_denied = False
             st.caption("[GEO DEBUG] → gps set, rerunning")
-        elif result.get("code") == 1:
+        elif result.get("error") == 1:
             st.session_state.geo_denied = True
-            st.caption("[GEO DEBUG] → denied, rerunning")
+            st.caption("[GEO DEBUG] → denied (code 1), rerunning")
         else:
-            st.caption(f"[GEO DEBUG] → code={result.get('code')!r}, rerunning")
+            st.caption(f"[GEO DEBUG] → error code={result.get('error')!r}, rerunning")
         st.rerun()
     else:
-        st.caption("[GEO DEBUG] → stato default, attendo click")
+        st.caption("[GEO DEBUG] → None, attendo click")
     st.stop()
 
 

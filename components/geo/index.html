@@ -5,103 +5,136 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; padding: 4px; }
 #btn {
-  display: block;
-  width: 100%;
-  padding: 10px 16px;
-  background: #FF4B4B;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  display: block; width: 100%; padding: 10px 16px;
+  background: #FF4B4B; color: #fff; border: none;
+  border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: rgba(0,0,0,0.1);
 }
-#btn:active { opacity: 0.8; }
-#btn:disabled { background: #aaa; cursor: default; }
-#msg {
-  margin-top: 7px;
-  font-size: 12px;
-  color: #555;
-  text-align: center;
-  min-height: 16px;
-}
+#btn:disabled { background: #aaa; }
+#log { margin-top: 6px; font-size: 11px; color: #444; line-height: 1.5; }
 </style>
 </head>
 <body>
 <button id="btn">📍 Rileva posizione</button>
-<div id="msg"></div>
+<div id="log"></div>
 <script>
 (function () {
   var sent = false;
   var btn = document.getElementById("btn");
-  var msg = document.getElementById("msg");
+  var log = document.getElementById("log");
 
-  /* ---- Streamlit messaging ---- */
-  function sendHeight() {
-    var h = Math.max(document.body.scrollHeight, 64);
-    window.parent.postMessage(
-      { isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: h },
-      "*"
-    );
+  function addLog(msg) {
+    log.textContent += "\n" + msg;
+  }
+
+  function setHeight() {
+    var h = Math.max(document.body.scrollHeight, 70);
+    window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: h }, "*");
   }
 
   function sendValue(value) {
     if (sent) return;
     sent = true;
-    window.parent.postMessage(
-      { isStreamlitMessage: true, type: "streamlit:setComponentValue", value: value, dataType: "json" },
-      "*"
+    addLog("→ send: " + JSON.stringify(value));
+    window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: value, dataType: "json" }, "*");
+  }
+
+  var geoOpts = { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 };
+
+  function tryDirect() {
+    addLog("try: navigator.geolocation direct");
+    if (!navigator.geolocation) {
+      addLog("navigator.geolocation = undefined");
+      return false;
+    }
+    addLog("navigator.geolocation OK, calling getCurrentPosition...");
+    navigator.geolocation.getCurrentPosition(
+      function(p) { addLog("direct OK: " + p.coords.latitude + "," + p.coords.longitude); setHeight(); sendValue({ lat: p.coords.latitude, lon: p.coords.longitude }); },
+      function(e) { addLog("direct ERROR: code=" + e.code + " msg=" + e.message); setHeight(); tryParentNav(); },
+      geoOpts
     );
+    return true;
   }
 
-  /* ---- Geolocation ---- */
-  var geoOpts = { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 };
-
-  function onSuccess(p) {
-    sendValue({ lat: p.coords.latitude, lon: p.coords.longitude });
+  function tryParentNav() {
+    addLog("try: window.parent.navigator.geolocation");
+    try {
+      if (!window.parent.navigator.geolocation) { addLog("parent.navigator.geolocation = undefined"); tryParentInject(); return; }
+      addLog("parent.navigator.geolocation OK, calling...");
+      window.parent.navigator.geolocation.getCurrentPosition(
+        function(p) { addLog("parentNav OK: " + p.coords.latitude + "," + p.coords.longitude); setHeight(); sendValue({ lat: p.coords.latitude, lon: p.coords.longitude }); },
+        function(e) { addLog("parentNav ERROR: code=" + e.code); setHeight(); tryParentInject(); },
+        geoOpts
+      );
+    } catch(e) { addLog("parentNav EXCEPTION: " + e.message); tryParentInject(); }
   }
 
-  function onError(e) {
-    msg.textContent = "";
-    btn.disabled = false;
-    btn.textContent = "📍 Rileva posizione";
-    sendValue({ error: e.code });
+  function tryParentInject() {
+    addLog("try: parent script injection");
+    try {
+      var existing = window.parent.document.getElementById("__geoInjectScript");
+      if (existing) existing.remove();
+      var s = window.parent.document.createElement("script");
+      s.id = "__geoInjectScript";
+      s.textContent = [
+        "(function(){",
+        "  if(window.__geoInProgress) return;",
+        "  window.__geoInProgress = true;",
+        "  window.__geoResult = undefined;",
+        "  if(!navigator.geolocation){window.__geoResult={error:2};return;}",
+        "  navigator.geolocation.getCurrentPosition(",
+        "    function(p){window.__geoResult={lat:p.coords.latitude,lon:p.coords.longitude};},",
+        "    function(e){window.__geoResult={error:e.code};},",
+        "    {enableHighAccuracy:true,timeout:12000,maximumAge:0}",
+        "  );",
+        "})()"
+      ].join("");
+      window.parent.document.head.appendChild(s);
+      addLog("inject OK, polling...");
+    } catch(e) {
+      addLog("inject EXCEPTION: " + e.message);
+      setHeight();
+      sendValue({ error: 99 });
+      return;
+    }
+    var attempts = 0;
+    var poll = setInterval(function() {
+      attempts++;
+      var r = window.parent.__geoResult;
+      if (r !== undefined) {
+        clearInterval(poll);
+        window.parent.__geoInProgress = false;
+        window.parent.__geoResult = undefined;
+        addLog("poll result: " + JSON.stringify(r));
+        setHeight();
+        sendValue(r);
+      } else if (attempts > 70) {
+        clearInterval(poll);
+        window.parent.__geoInProgress = false;
+        addLog("poll TIMEOUT");
+        setHeight();
+        sendValue({ error: 3 });
+      }
+    }, 200);
   }
 
-  btn.addEventListener("click", function () {
+  btn.addEventListener("click", function() {
     btn.disabled = true;
     btn.textContent = "⏳ Rilevamento…";
-    msg.textContent = "Attendere…";
-
-    try {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(onSuccess, onError, geoOpts);
-      } else {
-        sendValue({ error: 2 });
-      }
-    } catch (e) {
-      sendValue({ error: 99 });
-    }
+    log.textContent = "[click ricevuto]";
+    setHeight();
+    tryDirect();
   });
 
-  /* ---- Streamlit component protocol ---- */
-  window.addEventListener("message", function (evt) {
-    if (!evt.data || !evt.data.isStreamlitMessage) return;
-    if (evt.data.type === "streamlit:render") {
-      sendHeight();
-    }
+  window.addEventListener("message", function(evt) {
+    if (evt.data && evt.data.type === "streamlit:render") setHeight();
   });
 
-  /* Signal ready, then report height. */
-  window.parent.postMessage(
-    { isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 },
-    "*"
-  );
-  window.addEventListener("load", sendHeight);
-  setTimeout(sendHeight, 50);
+  window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 }, "*");
+  window.addEventListener("load", setHeight);
+  setTimeout(setHeight, 80);
 }());
 </script>
 </body>
