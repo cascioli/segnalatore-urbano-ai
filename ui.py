@@ -262,15 +262,23 @@ def _chiedi_gps_browser() -> None:
     # Lazy import: avoids module-level declare_component crash on Python 3.14.
     from streamlit_geolocation import streamlit_geolocation
     result = streamlit_geolocation()
+    st.caption(f"[GEO DEBUG] result={result!r}")
     if result is not None:
         lat = result.get("latitude")
         lon = result.get("longitude")
+        st.caption(f"[GEO DEBUG] lat={lat!r} lon={lon!r} code={result.get('code')!r}")
         if lat is not None and lon is not None:
             st.session_state.gps = (float(lat), float(lon))
             st.session_state.geo_denied = False
+            st.caption("[GEO DEBUG] → gps set, rerunning")
         elif result.get("code") == 1:
             st.session_state.geo_denied = True
+            st.caption("[GEO DEBUG] → denied, rerunning")
+        else:
+            st.caption(f"[GEO DEBUG] → result non-None ma no lat/lon/denied, rerunning")
         st.rerun()
+    else:
+        st.caption("[GEO DEBUG] result=None → st.stop()")
     st.stop()
 
 
@@ -343,6 +351,7 @@ def render_step_upload():
                 st.image(Image.open(io.BytesIO(b)), caption=f.name, width="stretch")
 
             exif_gps = estrai_gps_da_exif(original_first_bytes)
+            st.caption(f"[UPLOAD DEBUG] exif_gps={exif_gps!r} gps={st.session_state.gps!r} geo_denied={st.session_state.get('geo_denied')!r}")
 
             if exif_gps:
                 st.session_state.gps = exif_gps
