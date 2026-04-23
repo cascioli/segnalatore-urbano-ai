@@ -269,20 +269,13 @@ def _chiedi_gps_browser() -> None:
     # Read directly from session_state — more reliable than return value when
     # st.stop() is in play (return value can be stale on rerun).
     result = st.session_state.get("geo_location")
-    st.caption(f"[GEO DEBUG] result={result!r}")
     if result is not None:
         if "lat" in result:
             st.session_state.gps = (result["lat"], result["lon"])
             st.session_state.geo_denied = False
-            st.caption("[GEO DEBUG] → gps set, rerunning")
         elif result.get("error") == 1:
             st.session_state.geo_denied = True
-            st.caption("[GEO DEBUG] → denied (code 1), rerunning")
-        else:
-            st.caption(f"[GEO DEBUG] → error code={result.get('error')!r}, rerunning")
         st.rerun()
-    else:
-        st.caption("[GEO DEBUG] → None, attendo click")
     st.stop()
 
 
