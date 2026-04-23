@@ -17,14 +17,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: t
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  letter-spacing: 0.01em;
 }
 #btn:active { opacity: 0.85; }
 #btn:disabled { background: #999; cursor: default; }
 #msg {
   margin-top: 6px;
   font-size: 12px;
-  color: #666;
+  color: #555;
   text-align: center;
   min-height: 16px;
 }
@@ -40,7 +39,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: t
   var msg = document.getElementById("msg");
 
   function setHeight() {
-    var h = document.body.scrollHeight || 60;
+    var h = document.body.scrollHeight || 64;
     window.parent.postMessage({
       isStreamlitMessage: true,
       type: "streamlit:setFrameHeight",
@@ -59,20 +58,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: t
     }, "*");
   }
 
-  function onSuccess(p) {
-    send({ lat: p.coords.latitude, lon: p.coords.longitude });
-  }
-
-  function onError(e) {
-    send({ error: e.code });
-  }
-
   var geoOpts = { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 };
 
+  window.requestGeo = function () {
+    btn.disabled = true;
+    msg.textContent = "Rilevamento in corso…";
+
+    // Call navigator.geolocation directly in THIS iframe.
+    // Streamlit 1.24+ includes geolocation in the iframe allow attribute,
+    // so this call is permitted. The button click is a genuine user gesture,
+    // which satisfies iOS Safari's requirement to show the permission dialog.
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function (p) {
+          send({ lat: p.coords.latitude, lon: p.coords.longitude });
+        },
+        function (e) {
+          send({ error: e.code });
+        },
+        geoOpts
+      );
+    } else {
+      // Geolocation API not available in this iframe — try parent injection.
+      tryParentInjection();
+    }
+  };
+
+  // Fallback: inject a script into the parent page (same-origin).
+  // Used only when navigator.geolocation is unavailable in this iframe.
   function tryParentInjection() {
     try {
       var script = window.parent.document.createElement("script");
-      script.id = "__geoScript";
       script.textContent = [
         "(function() {",
         "  if (window.__geoInProgress) return;",
@@ -91,7 +107,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: t
       send({ error: 99 });
       return;
     }
-
     var attempts = 0;
     var poll = setInterval(function () {
       attempts++;
@@ -109,29 +124,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: t
     }, 200);
   }
 
-  window.requestGeo = function () {
-    btn.disabled = true;
-    msg.textContent = "Rilevamento in corso…";
-
-    // 1. Try calling parent's geolocation directly (same-origin).
-    //    On iOS Safari this call from an iframe button click may carry
-    //    the user-gesture context needed to trigger the permission dialog.
-    try {
-      if (window.parent.navigator && window.parent.navigator.geolocation) {
-        window.parent.navigator.geolocation.getCurrentPosition(
-          onSuccess, onError, geoOpts
-        );
-        return;
-      }
-    } catch (e) {
-      // cross-origin or no geo on parent — fall through
-    }
-
-    // 2. Fallback: inject a script tag into the parent document.
-    tryParentInjection();
-  };
-
-  // Notify Streamlit we are ready and set iframe height.
+  // Signal ready to Streamlit.
   window.parent.postMessage({
     isStreamlitMessage: true,
     type: "streamlit:componentReady",
