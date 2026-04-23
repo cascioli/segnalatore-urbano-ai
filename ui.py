@@ -258,21 +258,17 @@ _RESET_ONBOARDING_JS = (
 )
 
 
-@st.cache_resource
-def _get_geo_component():
-    return st.components.v1.declare_component(
-        "geo_location",
-        path=str(Path(__file__).parent / "components" / "geo"),
-    )
-
-
 def _chiedi_gps_browser() -> None:
-    result = _get_geo_component()(key="geo_location", default=None)
+    # Lazy import: avoids module-level declare_component crash on Python 3.14.
+    from streamlit_geolocation import streamlit_geolocation
+    result = streamlit_geolocation(key="geo_loc")
     if result is not None:
-        if "lat" in result:
-            st.session_state.gps = (result["lat"], result["lon"])
+        lat = result.get("latitude")
+        lon = result.get("longitude")
+        if lat is not None and lon is not None:
+            st.session_state.gps = (float(lat), float(lon))
             st.session_state.geo_denied = False
-        elif result.get("error") == 1:
+        elif result.get("code") == 1:
             st.session_state.geo_denied = True
         st.rerun()
     st.stop()
