@@ -258,20 +258,21 @@ _RESET_ONBOARDING_JS = (
 )
 
 
-_geo_component = st.components.v1.declare_component(
-    "geo_location",
-    path=str(Path(__file__).parent / "components" / "geo"),
-)
+@st.cache_resource
+def _get_geo_component():
+    return st.components.v1.declare_component(
+        "geo_location",
+        path=str(Path(__file__).parent / "components" / "geo"),
+    )
 
 
 def _chiedi_gps_browser() -> None:
-    st.info("📍 Rilevamento posizione in corso…")
-    result = _geo_component(key="geo_location", default=None)
+    result = _get_geo_component()(key="geo_location", default=None)
     if result is not None:
         if "lat" in result:
             st.session_state.gps = (result["lat"], result["lon"])
             st.session_state.geo_denied = False
-        else:
+        elif result.get("error") == 1:
             st.session_state.geo_denied = True
         st.rerun()
     st.stop()
@@ -356,7 +357,11 @@ def render_step_upload():
             elif not st.session_state.get("geo_denied", False):
                 _chiedi_gps_browser()
             else:
-                st.warning("⚠️ Posizione GPS non disponibile.")
+                st.warning("⚠️ Posizione non disponibile — inseriscila manualmente.")
+                st.info(
+                    "📱 **Su iOS:** Impostazioni → Privacy e sicurezza → "
+                    "Localizzazione → Safari/Brave → imposta **Durante l'uso**."
+                )
                 st.session_state.indirizzo_manuale = st.text_input(
                     "Descrivi dove si trova il problema:",
                     placeholder="es. Via Napoli 45, vicino alla farmacia",

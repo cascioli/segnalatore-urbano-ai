@@ -1,10 +1,52 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><style>body{margin:0;padding:0;height:0;overflow:hidden}</style></head>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; }
+#btn {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: #FF4B4B;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+}
+#btn:active { opacity: 0.85; }
+#btn:disabled { background: #999; cursor: default; }
+#msg {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  min-height: 16px;
+}
+</style>
+</head>
 <body>
+<button id="btn" onclick="requestGeo()">📍 Rileva posizione</button>
+<div id="msg"></div>
 <script>
 (function () {
   var sent = false;
+  var btn = document.getElementById("btn");
+  var msg = document.getElementById("msg");
+
+  function setHeight() {
+    var h = document.body.scrollHeight || 60;
+    window.parent.postMessage({
+      isStreamlitMessage: true,
+      type: "streamlit:setFrameHeight",
+      height: h
+    }, "*");
+  }
 
   function send(value) {
     if (sent) return;
@@ -17,17 +59,17 @@
     }, "*");
   }
 
-  window.parent.postMessage({
-    isStreamlitMessage: true,
-    type: "streamlit:componentReady",
-    apiVersion: 1
-  }, "*");
+  function onSuccess(p) {
+    send({ lat: p.coords.latitude, lon: p.coords.longitude });
+  }
 
-  window.addEventListener("message", function (evt) {
-    if (evt.data.type !== "streamlit:render") return;
+  function onError(e) {
+    send({ error: e.code });
+  }
 
-    // Inject into the parent page context so Safari's Permissions Policy
-    // doesn't block geolocation (iframe restriction does not apply there).
+  var geoOpts = { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 };
+
+  function tryParentInjection() {
     try {
       var script = window.parent.document.createElement("script");
       script.id = "__geoScript";
@@ -40,7 +82,7 @@
         "  navigator.geolocation.getCurrentPosition(",
         "    function(p) { window.__geoResult = {lat: p.coords.latitude, lon: p.coords.longitude}; },",
         "    function(e) { window.__geoResult = {error: e.code}; },",
-        "    {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000}",
+        "    {enableHighAccuracy: true, timeout: 12000, maximumAge: 60000}",
         "  );",
         "})()"
       ].join("\n");
@@ -50,7 +92,6 @@
       return;
     }
 
-    // Poll parent window for result (max 12 s).
     var attempts = 0;
     var poll = setInterval(function () {
       attempts++;
@@ -60,13 +101,45 @@
         window.parent.__geoInProgress = false;
         window.parent.__geoResult = undefined;
         send(r);
-      } else if (attempts > 60) {
+      } else if (attempts > 70) {
         clearInterval(poll);
         window.parent.__geoInProgress = false;
         send({ error: 3 });
       }
     }, 200);
-  });
+  }
+
+  window.requestGeo = function () {
+    btn.disabled = true;
+    msg.textContent = "Rilevamento in corso…";
+
+    // 1. Try calling parent's geolocation directly (same-origin).
+    //    On iOS Safari this call from an iframe button click may carry
+    //    the user-gesture context needed to trigger the permission dialog.
+    try {
+      if (window.parent.navigator && window.parent.navigator.geolocation) {
+        window.parent.navigator.geolocation.getCurrentPosition(
+          onSuccess, onError, geoOpts
+        );
+        return;
+      }
+    } catch (e) {
+      // cross-origin or no geo on parent — fall through
+    }
+
+    // 2. Fallback: inject a script tag into the parent document.
+    tryParentInjection();
+  };
+
+  // Notify Streamlit we are ready and set iframe height.
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:componentReady",
+    apiVersion: 1
+  }, "*");
+
+  window.addEventListener("load", setHeight);
+  setTimeout(setHeight, 100);
 }());
 </script>
 </body>
