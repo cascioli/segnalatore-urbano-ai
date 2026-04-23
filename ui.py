@@ -258,15 +258,21 @@ _RESET_ONBOARDING_JS = (
 )
 
 
+@st.cache_resource
+def _get_geo_component():
+    return st.components.v1.declare_component(
+        "geo_location",
+        path=str(Path(__file__).parent / "components" / "geo"),
+    )
+
+
 def _chiedi_gps_browser() -> None:
-    # Lazy import avoids module-level declare_component crash on Python 3.14.
-    from streamlit_geolocation import streamlit_geolocation
-    result = streamlit_geolocation(key="geo_loc")
+    result = _get_geo_component()(key="geo_location", default=None)
     if result is not None:
-        if result.get("latitude") is not None:
-            st.session_state.gps = (float(result["latitude"]), float(result["longitude"]))
+        if "lat" in result:
+            st.session_state.gps = (result["lat"], result["lon"])
             st.session_state.geo_denied = False
-        elif result.get("code") == 1:
+        elif result.get("error") == 1:
             st.session_state.geo_denied = True
         st.rerun()
     st.stop()
@@ -356,6 +362,9 @@ def render_step_upload():
                     "📱 **Su iOS:** Impostazioni → Privacy e sicurezza → "
                     "Localizzazione → Safari/Brave → imposta **Durante l'uso**."
                 )
+                if st.button("🔄 Riprova rilevamento posizione"):
+                    st.session_state.geo_denied = False
+                    st.rerun()
                 st.session_state.indirizzo_manuale = st.text_input(
                     "Descrivi dove si trova il problema:",
                     placeholder="es. Via Napoli 45, vicino alla farmacia",
