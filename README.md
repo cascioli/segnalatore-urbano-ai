@@ -217,7 +217,7 @@ Sono disponibile per:
 - **Adattamento** ad altri Comuni o contesti specifici
 - **Sviluppo di funzionalità personalizzate**
 
-Per licenze commerciali o supporto professionale contatta: [rent.dev.commercial@gmail.com](mailto:rent.dev.commercial@gmail.com)
+Per licenze commerciali o supporto professionale contatta: [info@simonecascioli.it](mailto:info@simonecascioli.it)
 
 ---
 
