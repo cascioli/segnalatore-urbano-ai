@@ -31,6 +31,7 @@
 **Segnalatore Urbano Intelligente** è un'app web open source pensata per i cittadini di Foggia. Permette di segnalare problemi nella città — buche, rifiuti abbandonati, lampioni rotti — direttamente agli uffici comunali competenti, con l'aiuto dell'intelligenza artificiale.
 
 Basta caricare una foto. Il resto lo fa l'app:
+
 - 🤖 **Gemini AI** analizza il problema e scrive la descrizione
 - 📍 **GPS automatico** o geocoding dell'indirizzo inserito
 - 📧 **Email precompilata** al corretto ufficio del Comune
@@ -191,6 +192,7 @@ Contributi benvenuti! Ecco come partecipare:
 ### Bug report
 
 Apri una [Issue su GitHub](https://github.com/cascioli/segnalatore-urbano-ai/issues) con:
+
 - Descrizione del problema
 - Passi per riprodurlo
 - Screenshot (se utile)
@@ -199,7 +201,7 @@ Apri una [Issue su GitHub](https://github.com/cascioli/segnalatore-urbano-ai/iss
 
 ## 📄 Licenza
 
-Distribuito sotto licenza **MIT**. Vedi [`LICENSE`](LICENSE) per i dettagli.
+Distribuito sotto licenza **GNU General Public License v3.0**. Vedi [`LICENSE`](LICENSE) per i dettagli.
 
 ---
 
