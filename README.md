@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/github/stars/cascioli/segnalatore-urbano-ai?style=social" alt="GitHub Stars"/>
   </a>
   <a href="https://github.com/cascioli/segnalatore-urbano-ai/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License MIT"/>
+    <img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License AGPL-3.0"/>
   </a>
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"/>
   <img src="https://img.shields.io/badge/built%20with-Streamlit-ff4b4b.svg" alt="Streamlit"/>
@@ -201,7 +201,23 @@ Apri una [Issue su GitHub](https://github.com/cascioli/segnalatore-urbano-ai/iss
 
 ## 📄 Licenza
 
-Distribuito sotto licenza **GNU General Public License v3.0**. Vedi [`LICENSE`](LICENSE) per i dettagli.
+Distribuito sotto licenza **GNU Affero General Public License v3.0** (AGPL-3.0-or-later). Vedi [`LICENSE`](LICENSE) per i dettagli.
+
+L'AGPL garantisce libertà di uso, modifica e distribuzione — anche in modalità SaaS/network — a condizione che il codice sorgente rimanga sempre accessibile agli utenti finali.
+
+### Licenza commerciale
+
+Se vuoi usare questo software a scopo commerciale **senza l'obbligo di rendere pubblico il codice sorgente**, è disponibile una licenza commerciale su richiesta.
+
+### Supporto professionale
+
+Sono disponibile per:
+
+- **Assistenza e gestione professionale** dell'applicazione
+- **Adattamento** ad altri Comuni o contesti specifici
+- **Sviluppo di funzionalità personalizzate**
+
+Per licenze commerciali o supporto professionale contatta: [rent.dev.commercial@gmail.com](mailto:rent.dev.commercial@gmail.com)
 
 ---
 

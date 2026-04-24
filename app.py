@@ -1,3 +1,6 @@
+# Segnalatore Urbano Intelligente — Copyright (C) 2026 Simone Cascioli
+# Distribuito sotto licenza GNU Affero General Public License v3.0 (AGPL-3.0-or-later).
+# Per dettagli: <https://www.gnu.org/licenses/agpl-3.0.html>
 """
 Segnalatore Urbano Intelligente — Comune di Foggia
 Streamlit app per segnalare problemi urbani con analisi AI (Gemini) e salvataggio su Supabase.
