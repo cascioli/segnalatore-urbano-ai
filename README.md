@@ -1,152 +1,147 @@
-# 🏙️ Segnalatore Urbano Intelligente — Foggia
-
 <p align="center">
-  <b>La tua voce per una Foggia migliore.</b><br/>
-  Scatta, analizza, segnala. In meno di un minuto.
+  <h1 align="center">🏙️ Urban Issue Reporter — AI-Powered</h1>
+  <p align="center">
+    Let citizens report city problems in under a minute.<br/>
+    Photo → AI analysis → pre-filled email to the right office → public map.
+  </p>
 </p>
 
 <p align="center">
-  <a href="https://github.com/cascioli/segnalatore-urbano-ai/stargazers">
-    <img src="https://img.shields.io/github/stars/cascioli/segnalatore-urbano-ai?style=social" alt="GitHub Stars"/>
+  <a href="https://segnalafoggia.streamlit.app">
+    <img src="https://img.shields.io/badge/Live%20Demo-segnalafoggia.streamlit.app-ff4b4b?logo=streamlit&logoColor=white" alt="Live Demo"/>
   </a>
   <a href="https://github.com/cascioli/segnalatore-urbano-ai/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License AGPL-3.0"/>
   </a>
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"/>
   <img src="https://img.shields.io/badge/built%20with-Streamlit-ff4b4b.svg" alt="Streamlit"/>
-  <a href="https://segnalafoggia.streamlit.app">
-    <img src="https://img.shields.io/badge/Streamlit-Open%20App-ff4b4b?logo=streamlit&logoColor=white" alt="Open in Streamlit"/>
+  <a href="https://github.com/cascioli/segnalatore-urbano-ai/stargazers">
+    <img src="https://img.shields.io/github/stars/cascioli/segnalatore-urbano-ai?style=social" alt="GitHub Stars"/>
   </a>
 </p>
 
 <p align="center">
-  <!-- PLACEHOLDER: sostituisci con screenshot o GIF dell'app -->
-  <img src="docs/screenshot.png" alt="Screenshot app" width="800"/>
+  <img src="docs/screenshot.png" alt="App screenshot" width="800"/>
 </p>
 
 ---
 
-## ✨ Cos'è
+## What it does
 
-**Segnalatore Urbano Intelligente** è un'app web open source pensata per i cittadini di Foggia. Permette di segnalare problemi nella città — buche, rifiuti abbandonati, lampioni rotti — direttamente agli uffici comunali competenti, con l'aiuto dell'intelligenza artificiale.
+A citizen uploads 1–3 photos of a city problem (pothole, illegal dumping, broken streetlight). The app:
 
-Basta caricare una foto. Il resto lo fa l'app:
+1. **Extracts GPS** from photo EXIF metadata — or geocodes a typed address via OpenStreetMap
+2. **Gemini 2.5 Flash** identifies the problem category and writes a description
+3. **Routes an email** to the correct municipal office, pre-filled and ready to send
+4. **Pins the report** on a public live map — visible to everyone, zero accounts required
 
-- 🤖 **Gemini AI** analizza il problema e scrive la descrizione
-- 📍 **GPS automatico** o geocoding dell'indirizzo inserito
-- 📧 **Email precompilata** al corretto ufficio del Comune
-- 🗺️ **Mappa pubblica** con tutte le segnalazioni dei cittadini
-
----
-
-## 🚀 Funzionalità
-
-| Feature | Descrizione |
-|---|---|
-| 📸 Analisi AI multimodale | Fino a 3 foto analizzate da Gemini 2.5 Flash (fallback su 2.5 Flash Lite) |
-| 🗂️ Categorizzazione automatica | Buche, Rifiuti, Illuminazione/Reti, Altro |
-| 📍 GPS da EXIF | Coordinate estratte automaticamente dalla foto |
-| 🗺️ Geocoding fallback | Se il GPS manca, l'indirizzo viene convertito in coordinate via Nominatim (OSM) |
-| 📧 Email routing smart | L'email viene indirizzata all'ufficio comunale corretto in base alla categoria |
-| ⚡ Domanda di follow-up AI | Gemini genera una domanda contestuale per arricchire la segnalazione |
-| 🌍 Mappa pubblica | Tutte le segnalazioni geolocalizzate visibili a tutti |
-| 🔒 Anonimato garantito | Nessun dato personale raccolto |
+No login. No personal data collected. Fully anonymous by design.
 
 ---
 
-## 🛠️ Stack tecnologico
+## Demo flow
 
-| Componente | Tecnologia |
+```
+citizen uploads photo
+        │
+        ▼
+[EXIF GPS extraction] ──── no GPS ────► [Nominatim geocoding]
+        │
+        ▼
+[Gemini 2.5 Flash multimodal analysis]
+        │
+        ├─ Potholes       → public-works office
+        ├─ Illegal waste  → environment office + waste company cc
+        ├─ Broken lights  → urban planning office
+        └─ Other          → general citizen relations office
+        │
+        ▼
+[mailto: link ready to send]  +  [point saved to public map]
+```
+
+---
+
+## Features
+
+| | Feature | Detail |
+|---|---|---|
+| 🤖 | Multimodal AI analysis | Gemini 2.5 Flash; auto-fallback to 2.5 Flash Lite |
+| 📍 | Automatic GPS | Extracted from EXIF before any compression |
+| 🗺️ | Geocoding fallback | Address → coords via Nominatim (no API key needed) |
+| 📧 | Smart email routing | Pre-filled `mailto:` link, zero server required |
+| 🌍 | Public live map | All open reports, PyDeck, refreshed every 5 minutes |
+| 🔒 | Privacy-first | Anonymous, no auth, RLS enforced at DB level |
+| 📱 | Mobile-ready | HEIC/HEIF support, auto-compress to ≤ 2 MB |
+| ❓ | AI follow-up question | Gemini asks a context-specific question to enrich the report |
+
+---
+
+## Tech stack
+
+| Layer | Technology |
 |---|---|
-| Frontend & logica | Python 3.10+, Streamlit |
-| Intelligenza visiva | Google Gemini 2.5 Flash + 2.5 Flash Lite (fallback automatico, `google-genai`) |
-| Database & mappa | Supabase (PostgreSQL) |
-| Geocoding | Nominatim / OpenStreetMap (gratuito, no API key) |
-| Estrazione GPS | `exifread`, `Pillow` |
-| Test | `pytest` |
+| App framework | Python 3.10+, Streamlit |
+| AI vision | Google Gemini 2.5 Flash (`google-genai`) |
+| Database & storage | Supabase (PostgreSQL + object storage) |
+| Geocoding | Nominatim / OpenStreetMap |
+| Image handling | Pillow, pillow-heif, exifread |
+| Map rendering | PyDeck |
+| Tests | pytest |
 | Hosting | Streamlit Community Cloud |
 
 ---
 
-## ⚙️ Come funziona
+## Quick start
 
-```
-[Cittadino carica foto]
-        │
-        ▼
-[Estrazione GPS da EXIF] ──── nessun GPS ────► [Geocoding indirizzo via Nominatim]
-        │
-        ▼
-[Gemini AI analizza le foto]
-        │
-        ├── categoria: Buche       → lavori.pubblici@comune.foggia.it
-        ├── categoria: Rifiuti     → ambiente@comune.foggia.it + cc AMIU
-        ├── categoria: Illuminazione → urbanistica@comune.foggia.it
-        └── categoria: Altro       → urp@comune.foggia.it
-        │
-        ▼
-[Email precompilata pronta] + [Punto salvato sulla mappa pubblica]
-```
-
----
-
-## 💻 Sviluppo locale
-
-### Prerequisiti
+### Prerequisites
 
 - Python 3.10+
-- Un progetto [Supabase](https://supabase.com) con la tabella `segnalazioni` (vedi sotto)
-- Una API key [Google AI Studio](https://aistudio.google.com)
+- [Supabase](https://supabase.com) project (free tier works)
+- [Google AI Studio](https://aistudio.google.com) API key (free tier works)
 
-### Installazione
+### Install
 
 ```bash
 git clone https://github.com/cascioli/segnalatore-urbano-ai.git
 cd segnalatore-urbano-ai
 
 python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
+source .venv/bin/activate      # macOS/Linux
+# .venv\Scripts\activate       # Windows
 
 pip install -r requirements.txt
 ```
 
-### Configurazione secrets
+### Configure
 
-Crea il file `.streamlit/secrets.toml` (non committare mai questo file — è già in `.gitignore`):
+Create `.streamlit/secrets.toml` (already git-ignored):
 
 ```toml
-GEMINI_API_KEY = "la-tua-api-key"
+GEMINI_API_KEY = "your-key"
 SUPABASE_URL   = "https://xxxx.supabase.co"
 SUPABASE_KEY   = "eyJ..."
 ```
 
-### Avvio
+### Run
 
 ```bash
 streamlit run app.py
+# → http://localhost:8501
 ```
 
-Apri [http://localhost:8501](http://localhost:8501) nel browser.
+### Test
+
+```bash
+pytest tests/
+```
 
 ---
 
-## 🗄️ Schema database Supabase
+## Database setup
 
-Esegui questo SQL nell'editor di Supabase (`SQL Editor → New query`):
+Run this in the Supabase SQL editor:
 
 ```sql
--- Se aggiorni una tabella esistente (aggiunge colonne mancanti):
-alter table segnalazioni
-  add column if not exists image_url text,
-  add column if not exists resolved  boolean not null default false;
-
--- Backfill se resolved è NULL su righe vecchie:
-update segnalazioni set resolved = false where resolved is null;
-
--- Schema completo (creazione da zero):
 create table segnalazioni (
   id         uuid primary key default gen_random_uuid(),
   lat        float8,
@@ -158,76 +153,56 @@ create table segnalazioni (
 );
 ```
 
-Poi applica le policy RLS eseguendo `supabase/migrations/002_rls_policies.sql` nell'editor SQL di Supabase (o incollane il contenuto direttamente).
+Then apply `supabase/migrations/002_rls_policies.sql`. The policies enforce:
 
-Le policy definite:
-
-| Policy | Operazione | Regola |
-|--------|-----------|--------|
-| `public_read` | SELECT | Tutti possono leggere |
-| `public_insert` | INSERT | Solo coords Foggia + categoria valida |
-| `public_resolve` | UPDATE | Solo `resolved false → true` |
-| `no_delete` | DELETE | Bloccato esplicitamente |
+- **SELECT** — anyone can read open reports
+- **INSERT** — only valid coordinates + known category
+- **UPDATE** — only `resolved false → true` (no edits)
+- **DELETE** — blocked entirely
 
 ---
 
-## 🤝 Come contribuire
+## Deploy your own city
 
-Contributi benvenuti! Ecco come partecipare:
+`config.py` is the only file you need to change:
 
-1. **Forka** il repository
-2. Crea un branch: `git checkout -b feat/nome-feature`
-3. Fai le tue modifiche e committa: `git commit -m "feat: descrizione"`
-4. Pusha il branch: `git push origin feat/nome-feature`
-5. Apri una **Pull Request** su GitHub
+```python
+ROUTING_EMAIL = {
+    "Potholes":  {"to": "roads@yourcity.gov",    "cc": ""},
+    "Waste":     {"to": "sanitation@yourcity.gov","cc": "contractor@..."},
+    "Lighting":  {"to": "utilities@yourcity.gov", "cc": ""},
+    "Other":     {"to": "info@yourcity.gov",      "cc": ""},
+}
 
-### Idee per contribuire
+CITY_BBOX = "lon_min,lat_max,lon_max,lat_min"  # Nominatim bounding box
+```
 
-- 🌍 Adattare l'app ad altri Comuni italiani (routing email configurabile)
-- 📊 Dashboard admin per il Comune con statistiche sulle segnalazioni
-- 🔔 Notifiche email di conferma al cittadino
-- 🗺️ Mappa interattiva con cluster e filtri per categoria
-- 🌐 Supporto multilingua (IT/EN)
-
-### Bug report
-
-Apri una [Issue su GitHub](https://github.com/cascioli/segnalatore-urbano-ai/issues) con:
-
-- Descrizione del problema
-- Passi per riprodurlo
-- Screenshot (se utile)
+Then deploy for free on [Streamlit Community Cloud](https://streamlit.io/cloud) — connect your fork and add the three secrets.
 
 ---
 
-## 📄 Licenza
+## Contributing
 
-Distribuito sotto licenza **GNU Affero General Public License v3.0** (AGPL-3.0-or-later). Vedi [`LICENSE`](LICENSE) per i dettagli.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Areas with the most impact:
 
-L'AGPL garantisce libertà di uso, modifica e distribuzione — anche in modalità SaaS/network — a condizione che il codice sorgente rimanga sempre accessibile agli utenti finali.
-
-### Licenza commerciale
-
-Se vuoi usare questo software a scopo commerciale **senza l'obbligo di rendere pubblico il codice sorgente**, è disponibile una licenza commerciale su richiesta.
-
-### Supporto professionale
-
-Sono disponibile per:
-
-- **Assistenza e gestione professionale** dell'applicazione
-- **Adattamento** ad altri Comuni o contesti specifici
-- **Sviluppo di funzionalità personalizzate**
-
-Per licenze commerciali o supporto professionale contatta: [info@simonecascioli.it](mailto:info@simonecascioli.it)
+- Adapt the app for other cities / municipalities
+- Admin dashboard for municipal offices (stats, mark-as-resolved)
+- Map clustering and category/date filters
+- Multi-language support (currently Italian)
 
 ---
 
-## 👤 Autore
+## License
 
-**Simone Cascioli**
-🌐 [simonecascioli.it](https://simonecascioli.it) · 🐙 [@cascioli](https://github.com/cascioli)
+**AGPL-3.0-or-later** — free to use, modify, and deploy as long as the source remains open, including network/SaaS use.
+
+A **commercial license** is available if you need to deploy without AGPL obligations.  
+Professional support and custom development also available.
+
+Contact: [info@simonecascioli.it](mailto:info@simonecascioli.it)
 
 ---
 
 <p align="center">
-  Fatto con ❤️ per Foggia
+  Built by <a href="https://simonecascioli.it">Simone Cascioli</a> · <a href="https://github.com/cascioli">@cascioli</a>
 </p>
